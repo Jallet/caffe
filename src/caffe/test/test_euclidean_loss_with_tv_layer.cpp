@@ -6,7 +6,7 @@
 #include "caffe/blob.hpp"
 #include "caffe/common.hpp"
 #include "caffe/filler.hpp"
-#include "caffe/layers/euclidean_loss_layer.hpp"
+#include "caffe/layers/euclidean_loss_with_tv_layer.hpp"
 
 #include "caffe/test/test_caffe_main.hpp"
 #include "caffe/test/test_gradient_check_util.hpp"
@@ -14,13 +14,13 @@
 namespace caffe {
 
 template <typename TypeParam>
-class EuclideanLossLayerTest : public MultiDeviceTest<TypeParam> {
+class EuclideanLossWithTVLayerTest : public MultiDeviceTest<TypeParam> {
   typedef typename TypeParam::Dtype Dtype;
 
  protected:
-  EuclideanLossLayerTest()
-      : blob_bottom_data_(new Blob<Dtype>(10, 5, 4, 4)),
-        blob_bottom_label_(new Blob<Dtype>(10, 5, 4, 4)),
+  EuclideanLossWithTVLayerTest()
+      : blob_bottom_data_(new Blob<Dtype>(1, 1, 4, 4)),
+        blob_bottom_label_(new Blob<Dtype>(1, 1, 4, 4)),
         blob_top_loss_(new Blob<Dtype>()) {
     // fill the values
     FillerParameter filler_param;
@@ -31,7 +31,7 @@ class EuclideanLossLayerTest : public MultiDeviceTest<TypeParam> {
     blob_bottom_vec_.push_back(blob_bottom_label_);
     blob_top_vec_.push_back(blob_top_loss_);
   }
-  virtual ~EuclideanLossLayerTest() {
+  virtual ~EuclideanLossWithTVLayerTest() {
     delete blob_bottom_data_;
     delete blob_bottom_label_;
     delete blob_top_loss_;
@@ -41,7 +41,7 @@ class EuclideanLossLayerTest : public MultiDeviceTest<TypeParam> {
     // Get the loss without a specified objective weight -- should be
     // equivalent to explicitly specifiying a weight of 1.
     LayerParameter layer_param;
-    EuclideanLossLayer<Dtype> layer_weight_1(layer_param);
+    EuclideanLossWithTVLayer<Dtype> layer_weight_1(layer_param);
     layer_weight_1.SetUp(this->blob_bottom_vec_, this->blob_top_vec_);
     const Dtype loss_weight_1 =
         layer_weight_1.Forward(this->blob_bottom_vec_, this->blob_top_vec_);
@@ -50,7 +50,7 @@ class EuclideanLossLayerTest : public MultiDeviceTest<TypeParam> {
     // scaled appropriately.
     const Dtype kLossWeight = 3.7;
     layer_param.add_loss_weight(kLossWeight);
-    EuclideanLossLayer<Dtype> layer_weight_2(layer_param);
+    EuclideanLossWithTVLayer<Dtype> layer_weight_2(layer_param);
     layer_weight_2.SetUp(this->blob_bottom_vec_, this->blob_top_vec_);
     const Dtype loss_weight_2 =
         layer_weight_2.Forward(this->blob_bottom_vec_, this->blob_top_vec_);
@@ -68,22 +68,22 @@ class EuclideanLossLayerTest : public MultiDeviceTest<TypeParam> {
   vector<Blob<Dtype>*> blob_top_vec_;
 };
 
-TYPED_TEST_CASE(EuclideanLossLayerTest, TestDtypesAndDevices);
+TYPED_TEST_CASE(EuclideanLossWithTVLayerTest, TestDtypesAndDevices);
 
-TYPED_TEST(EuclideanLossLayerTest, TestForward) {
+TYPED_TEST(EuclideanLossWithTVLayerTest, TestForward) {
   this->TestForward();
 }
 
-TYPED_TEST(EuclideanLossLayerTest, TestGradient) {
+TYPED_TEST(EuclideanLossWithTVLayerTest, TestGradient) {
   typedef typename TypeParam::Dtype Dtype;
   LayerParameter layer_param;
   const Dtype kLossWeight = 3.7;
   layer_param.add_loss_weight(kLossWeight);
-  EuclideanLossLayer<Dtype> layer(layer_param);
+  EuclideanLossWithTVLayer<Dtype> layer(layer_param);
   layer.SetUp(this->blob_bottom_vec_, this->blob_top_vec_);
   GradientChecker<Dtype> checker(1e-2, 1e-2, 1701);
   checker.CheckGradientExhaustive(&layer, this->blob_bottom_vec_,
-      this->blob_top_vec_);
+      this->blob_top_vec_, 0);
 }
 
 }  // namespace caffe

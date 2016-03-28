@@ -12,6 +12,26 @@ void EuclideanLossLayer<Dtype>::Reshape(
   CHECK_EQ(bottom[0]->count(1), bottom[1]->count(1))
       << "Inputs must have the same dimension.";
   diff_.ReshapeLike(*bottom[0]);
+  Dtype* diff_data = diff_.mutable_cpu_data();
+  temp_.ReshapeLike(*bottom[0]);
+  Dtype* temp_data = temp_.mutable_cpu_data();
+  caffe_set(temp_.count(), (Dtype)1., temp_data);
+  p_.ReshapeLike(*bottom[0]);
+  Dtype* p_data = p_.mutable_cpu_data();
+  caffe_set(p_.count(), (Dtype)1., p_data);
+  q_.ReshapeLike(*bottom[0]);
+  Dtype* q_data = q_.mutable_cpu_data();
+  caffe_set(q_.count(), (Dtype)1., q_data);
+  r_.ReshapeLike(*bottom[0]);
+  Dtype* r_data = r_.mutable_cpu_data();
+  caffe_set(r_.count(), (Dtype)1., r_data);
+  vector<int> shape = vector<int>(1, 2);
+  s_.Reshape(shape);
+  Dtype* s_data = s_.mutable_cpu_data();
+  t_.Reshape(shape);
+  Dtype* t_data = t_.mutable_cpu_data();
+  u_.Reshape(shape);
+  Dtype* u_data = u_.mutable_cpu_data();
 }
 
 template <typename Dtype>
@@ -42,6 +62,8 @@ void EuclideanLossLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
           Dtype(0),                           // beta
           bottom[i]->mutable_cpu_diff());  // b
     }
+    LOG_IF(INFO, Caffe::root_solver())
+        << "bottom[i].shape" << bottom[i]->shape_string();
   }
 }
 

@@ -367,6 +367,7 @@ message LayerParameter {
   optional EltwiseParameter eltwise_param = 110;
   optional ELUParameter elu_param = 140;
   optional EmbedParameter embed_param = 137;
+  optional EuclideanWithTVParameter euclidean_with_tv_param = 145;
   optional ExpParameter exp_param = 111;
   optional FlattenParameter flatten_param = 135;
   optional HDF5DataParameter hdf5_data_param = 112;
@@ -544,6 +545,10 @@ message ContrastiveLossParameter {
   // legacy_version = true uses (margin - d^2). This is kept to support /
   // reproduce existing models and results
   optional bool legacy_version = 2 [default = false];
+}
+
+message EuclideanWithTVParameter {
+    optional float lambda = 1 [default = 0.1];
 }
 
 message ConvolutionParameter {

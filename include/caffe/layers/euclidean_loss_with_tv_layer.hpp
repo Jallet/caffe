@@ -1,7 +1,8 @@
-#ifndef CAFFE_EUCLIDEAN_LOSS_LAYER_HPP_
-#define CAFFE_EUCLIDEAN_LOSS_LAYER_HPP_
+#ifndef CAFFE_EUCLIDEAN_LOSS_WITH_TV_LAYER_HPP_
+#define CAFFE_EUCLIDEAN_LOSS_WITH_TV_LAYER_HPP_
 
 #include <vector>
+#include <string>
 
 #include "caffe/blob.hpp"
 #include "caffe/layer.hpp"
@@ -14,7 +15,7 @@ namespace caffe {
 /**
  * @brief Computes the Euclidean (L2) loss @f$
  *          E = \frac{1}{2N} \sum\limits_{n=1}^N \left| \left| \hat{y}_n - y_n
- *        \right| \right|_2^2 @f$ for real-valued regression tasks.
+ *        \right| \right|_2^2 @f$ and TV-norm for real-valued regression tasks.
  *
  * @param bottom input Blob vector (length 2)
  *   -# @f$ (N \times C \times H \times W) @f$
@@ -27,8 +28,8 @@ namespace caffe {
  *          \frac{1}{2n} \sum\limits_{n=1}^N \left| \left| \hat{y}_n - y_n
  *        \right| \right|_2^2 @f$
  *
- * This can be used for least-squares regression tasks.  An InnerProductLayer
- * input to a EuclideanLossLayer exactly formulates a linear least squares
+ * This can be used for smoothed least-squares regression tasks.  An InnerProductLayer
+ * input to a EuclideanLossWithTVLayer exactly formulates a smoothed linear least squares
  * regression problem. With non-zero weight decay the problem becomes one of
  * ridge regression -- see src/caffe/test/test_sgd_solver.cpp for a concrete
  * example wherein we check that the gradients computed for a Net with exactly
@@ -38,16 +39,19 @@ namespace caffe {
  * linear least squares problems! We use it only as an instructive example.)
  */
 template <typename Dtype>
-class EuclideanLossLayer : public LossLayer<Dtype> {
+class EuclideanLossWithTVLayer : public LossLayer<Dtype> {
  public:
-  explicit EuclideanLossLayer(const LayerParameter& param)
+  explicit EuclideanLossWithTVLayer(const LayerParameter& param)
       : LossLayer<Dtype>(param), diff_() {}
   virtual void Reshape(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top);
 
-  virtual inline const char* type() const { return "EuclideanLoss"; }
+  //virtual void LayerSetUp(const vector<Blob<Dtype>*>& bottom,
+  //        const vector<Blob<Dtype>*>& top);
+
+  virtual inline const char* type() const { return "EuclideanLossWithTV"; }
   /**
-   * Unlike most loss layers, in the EuclideanLossLayer we can backpropagate
+   * Unlike most loss layers, in the EuclideanLossWithTVLayer we can backpropagate
    * to both inputs -- override to return true and always allow force_backward.
    */
   virtual inline bool AllowForceBackward(const int bottom_index) const {
@@ -55,16 +59,18 @@ class EuclideanLossLayer : public LossLayer<Dtype> {
   }
 
  protected:
-  /// @copydoc EuclideanLossLayer
+  /// @copydoc EuclideanLossWithTVLayer
   virtual void Forward_cpu(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top);
+  virtual void print_data(const int num_, const std::string name, const Dtype *data, 
+          int height, int width);
   virtual void Forward_gpu(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top);
 
   /**
    * @brief Computes the Euclidean error gradient w.r.t. the inputs.
    *
-   * Unlike other children of LossLayer, EuclideanLossLayer \b can compute
+   * Unlike other children of LossLayer, EuclideanLossWithTVLayer \b can compute
    * gradients with respect to the label inputs bottom[1] (but still only will
    * if propagate_down[1] is set, due to being produced by learnable parameters
    * or if force_backward is set). In fact, this layer is "commutative" -- the
@@ -100,15 +106,43 @@ class EuclideanLossLayer : public LossLayer<Dtype> {
       const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom);
 
   Blob<Dtype> diff_;
-  Blob<Dtype> temp_;
   Blob<Dtype> p_;
   Blob<Dtype> q_;
-  Blob<Dtype> r_;
-  Blob<Dtype> s_;
-  Blob<Dtype> t_;
-  Blob<Dtype> u_;
+  Blob<Dtype> _2d_q_; //column variation transformation matrix
+  Blob<Dtype> _2d_p_; //row variation transformation matrix
+  
+  Blob<Dtype> row_; //row variation 
+  Blob<Dtype> abs_row_; // absolute row variation
+  Blob<Dtype> col_; //col variation
+  Blob<Dtype> abs_col_;//absolute col variation
+  
+  Blob<Dtype> row_sign_;// sign of row variation
+  Blob<Dtype> col_sign_;// sign of col variation
+  
+  Blob<Dtype> row_gradient_;// gradient of row varaition row_
+  Blob<Dtype> col_gradient_; //gradient of col varaition col_ 
+  
+  //complete (height - 1) * width gradient to height * width gradient matrix
+  Blob<Dtype> row_gradient_completer;
+  //complete height * (width - 1) gradient to height * width gradient matrix
+  Blob<Dtype> col_gradient_completer;
+  
+  Blob<Dtype> row_total_gradient;//total gradient of row, echo element is the 
+                                 // sum of its left and right column
+  Blob<Dtype> col_total_gradient;//total gradient of col, each element is the 
+                                 //sum of its above and below row 
+  Blob<Dtype> row_gradient_adder;
+  Blob<Dtype> col_gradient_adder;
+  //Blob<Dtype> gradient_adder;
+  Blob<Dtype> total_gradient;
+  //Blob<Dtype> col_gradient_adder;
+  
+  float lambda_;
+  int num_;
+  int height;
+  int width;
 };
 
 }  // namespace caffe
 
-#endif  // CAFFE_EUCLIDEAN_LOSS_LAYER_HPP_
+#endif  // CAFFE_EUCLIDEAN_LOSS_WITH_TV_LAYER_HPP_
