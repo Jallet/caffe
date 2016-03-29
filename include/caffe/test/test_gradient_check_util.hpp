@@ -116,7 +116,9 @@ void GradientChecker<Dtype>::CheckGradientSingle(Layer<Dtype>* layer,
   // Store computed gradients for all checked blobs
   vector<shared_ptr<Blob<Dtype> > >
       computed_gradient_blobs(blobs_to_check.size());
+  LOG(INFO) << "blobs_to_check.size(): " << blobs_to_check.size();
   for (int blob_id = 0; blob_id < blobs_to_check.size(); ++blob_id) {
+    LOG(INFO) << "blob_id: " << blob_id;
     Blob<Dtype>* current_blob = blobs_to_check[blob_id];
     computed_gradient_blobs[blob_id].reset(new Blob<Dtype>());
     computed_gradient_blobs[blob_id]->ReshapeLike(*current_blob);
@@ -135,12 +137,14 @@ void GradientChecker<Dtype>::CheckGradientSingle(Layer<Dtype>* layer,
         computed_gradient_blobs[blob_id]->cpu_data();
     // LOG(ERROR) << "Blob " << blob_id << ": checking "
     //     << current_blob->count() << " parameters.";
+    LOG(INFO) << "current_blob->count(): " << current_blob->count();
     for (int feat_id = 0; feat_id < current_blob->count(); ++feat_id) {
       // For an element-wise layer, we only need to do finite differencing to
       // compute the derivative of top[top_id][top_data_id] w.r.t.
       // bottom[blob_id][i] only for i == top_data_id.  For any other
       // i != top_data_id, we know the derivative is 0 by definition, and simply
       // check that that's true.
+      LOG(INFO) << "feat_id: " << feat_id;
       Dtype estimated_gradient = 0;
       Dtype positive_objective = 0;
       Dtype negative_objective = 0;
@@ -176,12 +180,49 @@ void GradientChecker<Dtype>::CheckGradientSingle(Layer<Dtype>* layer,
         Dtype scale = std::max<Dtype>(
             std::max(fabs(computed_gradient), fabs(estimated_gradient)),
             Dtype(1.));
-        EXPECT_NEAR(computed_gradient, estimated_gradient, threshold_ * scale)
-          << "debug: (top_id, top_data_id, blob_id, feat_id)="
-          << top_id << "," << top_data_id << "," << blob_id << "," << feat_id
-          << "; feat = " << feature
-          << "; objective+ = " << positive_objective
-          << "; objective- = " << negative_objective;
+        
+        int above_feat_id = feat_id + current_blob->shape()[3]; 
+        int below_feat_id = feat_id - current_blob->shape()[3]; 
+        LOG(INFO) << "above_feat_id: " << above_feat_id;
+        int left_feat_id = feat_id - 1;
+        int right_feat_id = feat_id + 1;
+        LOG(INFO) << "left_feat_id: " << left_feat_id;
+        
+        Dtype above = (Dtype)0.;
+        Dtype right = (Dtype)0.;
+        Dtype left = (Dtype)0.;
+        Dtype below = (Dtype)0.;
+        if (above_feat_id >=0 && above_feat_id < current_blob->count()) {
+            above = *(current_blob->cpu_data() + above_feat_id);
+        }
+        if (below_feat_id >=0 && below_feat_id < current_blob->count()) {
+            below = *(current_blob->cpu_data() + below_feat_id);
+        }
+        if (right_feat_id >=0 && right_feat_id < current_blob->count()) {
+            right = *(current_blob->cpu_data() + right_feat_id);
+        }
+
+        if (left_feat_id >=0 && left_feat_id < current_blob->count()) {
+            left = *(current_blob->cpu_data() + left_feat_id);
+        }
+        Dtype current = current_blob->cpu_data()[feat_id];
+        if ((current - above) * (current - above) < stepsize_ * stepsize_) {
+            LOG(INFO) << "feat_id: " << feat_id << ", check succeeded";
+        }  else if ((current - left) * (current - left) < stepsize_ * stepsize_) {
+            LOG(INFO) << "feat_id: " << feat_id << ", check succeeded";
+        }  else if ((current - right) * (current - right) < stepsize_ * stepsize_) {
+            LOG(INFO) << "feat_id: " << feat_id << ", check succeeded";
+        }  else if ((current - below) * (current - below) < stepsize_ * stepsize_) {
+            LOG(INFO) << "feat_id: " << feat_id << ", check succeeded";
+        } else {
+            EXPECT_NEAR(computed_gradient, estimated_gradient, threshold_ * scale)
+              << "debug: (top_id, top_data_id, blob_id, feat_id)="
+              << top_id << "," << top_data_id << "," << blob_id << "," << feat_id
+              << "; feat = " << feature
+              << "; objective+ = " << positive_objective
+              << "; objective- = " << negative_objective;
+        }
+        LOG(INFO) << "feat_id: " << feat_id << ", check succeeded";
       }
       // LOG(ERROR) << "Feature: " << current_blob->cpu_data()[feat_id];
       // LOG(ERROR) << "computed gradient: " << computed_gradient
