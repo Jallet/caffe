@@ -269,12 +269,13 @@ void EuclideanLossWithTVLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bo
   //LOG_IF(INFO, Caffe::root_solver())
   //    << "bottom[0]";
   print_data(num_, "bottom[0]", bottom[0]->cpu_data(), height, width);
-  //print_data(num_, "bottom[1]", bottom[1]->cpu_data(), height, width);
+  print_data(num_, "bottom[1]", bottom[1]->cpu_data(), height, width);
   caffe_sub(
       count,
       bottom[0]->cpu_data(),
       bottom[1]->cpu_data(),
       diff_.mutable_cpu_data());
+  print_data(num_, "diff_", diff_.cpu_data(), height, width);
   Dtype dot = caffe_cpu_dot(count, diff_.cpu_data(), diff_.cpu_data());
   Dtype loss = dot / bottom[0]->num() / Dtype(2);
   //if (height <=1 && width <= 1) {
@@ -300,6 +301,12 @@ void EuclideanLossWithTVLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bo
               (Dtype)1., q_data, bottom_data + height * width * i, 
               (Dtype)0., row_data + i * (height - 1) * width);
     }
+    //for (int i = 0; i < row_.count(); ++i) {
+    //    Dtype square = (Dtype)0.5 *  *(row_data + i) * *(row_data + i);
+    //    if (square < 1) {
+    //        caffe_set(1, square, row_data + i);
+    //    }
+    //}
     //LOG_IF(INFO, Caffe::root_solver())
     //    << "q * row finished";
 
@@ -319,6 +326,12 @@ void EuclideanLossWithTVLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bo
               (Dtype)1., bottom_data + height * width * i, p_data, (Dtype)0., 
               col_data + height * (width - 1) * i); 
     }
+    //for (int i = 0; i < col_.count(); ++i) {
+    //    Dtype square = (Dtype)0.5 * *(col_data + i) * *(col_data + i);
+    //    if (square < 1) {
+    //        caffe_set(1, square, col_data + i);
+    //    }
+    //}
     //print_data(num_, "col_", col_.cpu_data(), height, width - 1);
     Dtype *abs_col_data = abs_col_.mutable_cpu_data();
     caffe_abs(num_ * height * (width - 1), col_data, abs_col_data); 
@@ -364,6 +377,15 @@ void EuclideanLossWithTVLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& t
         } else {
           caffe_set(1, (Dtype)-1., row_sign_data + i);
         }
+        //if (*(row_data + i) > 1) {
+        //  caffe_set(1, (Dtype)1., row_sign_data + i);
+        //} else if (*(row_data + i) < -1) {
+        //  caffe_set(1, (Dtype)-1., row_sign_data + i);
+        //} else {
+        //    const Dtype square = (Dtype)2. * *(row_data + i);
+        //    caffe_sqr(1, &square, row_sign_data + i);
+        //    //caffe_set(1, (Dtype)(*(row_data + i)), row_sign_data + i);
+        //}
     }
     print_data(num_, "row_", row_.cpu_data(), height - 1, width);
     print_data(num_, "row_sign", row_sign_.cpu_data(), height - 1, width);
@@ -406,6 +428,15 @@ void EuclideanLossWithTVLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& t
         } else {
           caffe_set(1, (Dtype)-1., col_sign_data + i);
         }
+        //if (*(col_data + i) > 1) {
+        //  caffe_set(1, (Dtype)1., col_sign_data + i);
+        //} else if (*(col_data + i) < -1) {
+        //  caffe_set(1, (Dtype)-1., col_sign_data + i);
+        //} else {
+        //    const Dtype square = (Dtype)2. * *(col_data + i);
+        //    caffe_sqr(1, &square, col_sign_data + i);
+        //    //caffe_set(1, (Dtype)(*(col_data + i)), col_sign_data + i);
+        //}
     }
     print_data(num_, "col_", col_.cpu_data(), height, width - 1);
     print_data(num_, "col_sign", col_sign_.cpu_data(), height, width - 1);
