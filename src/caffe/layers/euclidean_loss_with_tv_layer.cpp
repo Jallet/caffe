@@ -7,19 +7,13 @@
 namespace caffe {
 
 template <typename Dtype>
-//void EuclideanLossWithTVLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom, 
-//        const vector<Blob<Dtype>*>& top) {
-//  //EuclideanWithTVParameter param = this->layer_param_.euclidean_with_tv_param();
-//  //lambda_ = param.lambda();
-//}
-
-template <typename Dtype>
-void EuclideanLossWithTVLayer<Dtype>::Reshape(
-  const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) {
-  LossLayer<Dtype>::Reshape(bottom, top);
-  CHECK_EQ(bottom[0]->count(1), bottom[1]->count(1))
-      << "Inputs must have the same dimension.";
-  diff_.ReshapeLike(*bottom[0]);
+void EuclideanLossWithTVLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom, 
+        const vector<Blob<Dtype>*>& top) {
+  LossLayer<Dtype>::LayerSetUp(bottom, top);
+  EuclideanWithTVParameter param = this->layer_param_.euclidean_with_tv_param();
+  lambda_ = param.lambda();
+  //EuclideanWithTVParameter param = this->layer_param_.euclidean_with_tv_param();
+  //lambda_ = param.lambda();
   vector<int> bottom_shape = bottom[0]->shape();
   num_ = bottom[0]->count() / bottom_shape[bottom_shape.size() - 1]
       / bottom_shape[bottom_shape.size() - 2];
@@ -228,6 +222,15 @@ void EuclideanLossWithTVLayer<Dtype>::Reshape(
   }
 }
 
+template <typename Dtype>
+void EuclideanLossWithTVLayer<Dtype>::Reshape(
+  const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) {
+  LossLayer<Dtype>::Reshape(bottom, top);
+  CHECK_EQ(bottom[0]->count(1), bottom[1]->count(1))
+      << "Inputs must have the same dimension.";
+  diff_.ReshapeLike(*bottom[0]);
+}
+
 //template <typename Dtype>
 //void EuclideanLossWithTVLayer<Dtype>::print_data(const int num, const std::string name, const Dtype* data, int height, int width) {
 //    ////LOG_IF(INFO, Caffe::root_solver())
@@ -339,7 +342,7 @@ void EuclideanLossWithTVLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bo
     ////print_data(num_, "abs_col_", abs_col_.cpu_data(), height, width - 1);
   }
 
-  Dtype tv_loss = (row_tv + col_tv) / bottom[0]->num();
+  Dtype tv_loss = lambda_ * (row_tv + col_tv) / bottom[0]->num();
 
   loss = loss + tv_loss;
   top[0]->mutable_cpu_data()[0] = loss;
@@ -348,10 +351,10 @@ void EuclideanLossWithTVLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bo
   //    << "top[0]->diff()[0]: " << top[0]->cpu_diff()[0];
 
   //LOG_IF(INFO, Caffe::root_solver())
-      << "row_tv: " << row_tv << "col_tv: " << col_tv;
+  //    << "row_tv: " << row_tv << "col_tv: " << col_tv;
   //loss = loss + col_tv + row_tv;
   //LOG_IF(INFO, Caffe::root_solver())
-      << "smoothed loss: " << loss;
+  //    << "smoothed loss: " << loss;
 }
 
 template <typename Dtype>
@@ -470,18 +473,18 @@ void EuclideanLossWithTVLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& t
     if (propagate_down[i]) {
       const Dtype sign = (i == 0) ? 1 : -1;
       //LOG_IF(INFO, Caffe::root_solver())
-          << "top.shape: " << top[0]->shape_string();
+      //    << "top.shape: " << top[0]->shape_string();
       //LOG_IF(INFO, Caffe::root_solver())
-          << "bottom.shape: " << bottom[0]->shape_string();
+      //    << "bottom.shape: " << bottom[0]->shape_string();
       //LOG_IF(INFO, Caffe::root_solver())
-          << "bottom.num: " << bottom[i]->num();
+      //    << "bottom.num: " << bottom[i]->num();
       //LOG_IF(INFO, Caffe::root_solver())
-          << "bottom.count: " << bottom[i]->count();
+      //    << "bottom.count: " << bottom[i]->count();
       //LOG_IF(INFO, Caffe::root_solver())
-          << "i: " << i << ", top[0]->cpu_diff[0]: " << top[0]->cpu_diff()[0];
+      //    << "i: " << i << ", top[0]->cpu_diff[0]: " << top[0]->cpu_diff()[0];
       const Dtype alpha = sign * top[0]->cpu_diff()[0] / bottom[i]->num();
       //LOG_IF(INFO, Caffe::root_solver())
-          << "alpha: " << alpha;
+      //    << "alpha: " << alpha;
       caffe_cpu_axpby(
           bottom[i]->count(),              // count
           alpha,                              // alpha
@@ -490,7 +493,7 @@ void EuclideanLossWithTVLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& t
           bottom[i]->mutable_cpu_diff());  // b
       //print_data(num_, "bottom-diff", bottom[i]->cpu_diff(), height, width);
       //const Dtype a = top[0]->cpu_diff()[0] / bottom[i]->num();
-      const Dtype a = top[0]->cpu_diff()[0] / bottom[i]->num();
+      const Dtype a = lambda_ * top[0]->cpu_diff()[0] / bottom[i]->num();
       caffe_scal(total_gradient.count(), a, total_gradient_data);
       //if (sign > 0) {
       //    const Dtype a = alpha; 
@@ -521,7 +524,7 @@ void EuclideanLossWithTVLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& t
       //        bottom[i]->cpu_diff(), bottom[i]->mutable_cpu_diff());
       //print_data(num_, i + "bottom-diff", bottom[i]->cpu_diff(), height, width);
       //LOG_IF(INFO, Caffe::root_solver())
-          << "add TV gradient";
+      //    << "add TV gradient";
     }
   }
   

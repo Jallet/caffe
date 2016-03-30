@@ -46,8 +46,8 @@ class EuclideanLossWithTVLayer : public LossLayer<Dtype> {
   virtual void Reshape(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top);
 
-  //virtual void LayerSetUp(const vector<Blob<Dtype>*>& bottom,
-  //        const vector<Blob<Dtype>*>& top);
+  virtual void LayerSetUp(const vector<Blob<Dtype>*>& bottom,
+          const vector<Blob<Dtype>*>& top);
 
   virtual inline const char* type() const { return "EuclideanLossWithTV"; }
   /**
@@ -62,8 +62,8 @@ class EuclideanLossWithTVLayer : public LossLayer<Dtype> {
   /// @copydoc EuclideanLossWithTVLayer
   virtual void Forward_cpu(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top);
-  virtual void print_data(const int num_, const std::string name, const Dtype *data, 
-          int height, int width);
+  //virtual void print_data(const int num_, const std::string name, const Dtype *data, 
+  //        int height, int width);
   virtual void Forward_gpu(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top);
 
