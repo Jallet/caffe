@@ -42,8 +42,8 @@ void EuclideanLossLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
           Dtype(0),                           // beta
           bottom[i]->mutable_cpu_diff());  // b
     }
-    LOG_IF(INFO, Caffe::root_solver())
-        << "bottom[i].shape" << bottom[i]->shape_string();
+    //LOG_IF(INFO, Caffe::root_solver())
+    //    << "bottom[i].shape" << bottom[i]->shape_string();
   }
 }
 
