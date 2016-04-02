@@ -94,6 +94,29 @@ class GaussianFiller : public Filler<Dtype> {
   shared_ptr<SyncedMemory> rand_vec_;
 };
 
+///@brief used for down sampling
+template <typename Dtype>
+class DownSampleFiller : public Filler<Dtype> {
+    public:
+    explicit DownSampleFiller(const FillerParameter& param)
+        : Filler<Dtype>(param) {}
+    virtual void Fill(Blob<Dtype>* blob) {
+        const Dtype value = this->filler_param_.value();
+        Dtype* data = blob->mutable_cpu_data();
+        DCHECK(blob->count());
+        vector<int> shape = blob->shape();
+        //int num = shape[0] * shape[1];
+        int dim = shape[2] * shape[3];
+        //CHECK_EQ(num, dim);
+        //int j = 0;
+        for (int i = 0; i < shape[0]; ++i) {
+            //for (int j = 0; j < shape[1]; ++j) {
+            data[i * shape[1] * dim + i] = value;
+            //}
+        }
+    }
+};
+
 /** @brief Fills a Blob with values @f$ x \in [0, 1] @f$
  *         such that @f$ \forall i \sum_j x_{ij} = 1 @f$.
  */
@@ -284,6 +307,8 @@ Filler<Dtype>* GetFiller(const FillerParameter& param) {
     return new MSRAFiller<Dtype>(param);
   } else if (type == "bilinear") {
     return new BilinearFiller<Dtype>(param);
+  } else if (type == "downsample") {
+    return new DownSampleFiller<Dtype>(param);
   } else {
     CHECK(false) << "Unknown filler name: " << param.type();
   }
